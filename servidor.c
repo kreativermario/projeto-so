@@ -68,7 +68,6 @@ void read_request(){
         char *p;
         char linha[100];
         int i = 0;
-        int j;
 
         /*Se o ficheiro pedidovacina.txt não existir, logo não recebeu pedido de vacinacao*/
         if( access( FILE_PEDIDO_VACINA , F_OK ) != 0 ) {
@@ -367,7 +366,7 @@ int fsize(FILE* file) {
 void read_file(){
 
     //Inicializa as variaveis
-    FILE *fb;
+    FILE *fp;
     Enfermeiro a;
 
     //Se o ficheiro existir
@@ -377,13 +376,13 @@ void read_file(){
     }
 
     //Abre o ficheiro enfermeiros.dat em modo leitura
-    fb = fopen(FILE_ENFERMEIROS, "r"); 
+    fp = fopen(FILE_ENFERMEIROS, "r"); 
 
     //Se ocorrer erro em ler
-    if(fb == NULL) erro("S2) Não consegui ler o ficheiro FILE_ENFERMEIROS!");
+    if(fp == NULL) erro("S2) Não consegui ler o ficheiro FILE_ENFERMEIROS!");
     
     //Regista o tamanho do ficheiro
-    size = fsize(fb);
+    size = fsize(fp);
 
     //O numero de linhas corresponde ao bytes do ficheiro / tamanho da estrutura
     counter = size / sizeof(Enfermeiro);
@@ -398,12 +397,12 @@ void read_file(){
     }
 
     //Lê o ficheiro até ao fim
-    fread(enfermeiros, sizeof(Enfermeiro), counter, fb); 
+    fread(enfermeiros, sizeof(Enfermeiro), counter, fp); 
 
-    sucesso("S2) Ficheiro FILE_ENFERMEIROS tem <%d> bytes, ou seja, <%d> enfermeiros", size, counter);
+    sucesso("S2) Ficheiro FILE_ENFERMEIROS tem <%ld> bytes, ou seja, <%d> enfermeiros", size, counter);
 
     //Fecha o ficheiro
-    fclose(fb);
+    fclose(fp);
 
 }
 

@@ -4,8 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
-Cidadao a;
-Vaga vagas[NUM_VAGAS];
+
 Enfermeiro *enfermeiros;
 long size;
 int counter;
@@ -21,10 +20,6 @@ void read_file(){
     FILE *fb;
     Enfermeiro a;
 
-    if( access( "enfermeiros.dat" , F_OK ) != 0 ) {
-        erro("enfermeiros.dat não encontrado");
-        exit(-1);
-    }
     fb = fopen("enfermeiros.dat", "r"); 
 
     if(fb == NULL) erro("S2) Não consegui ler o ficheiro FILE_ENFERMEIROS!\n");
@@ -33,11 +28,6 @@ void read_file(){
     size = fsize(fb);
     counter = size / sizeof(Enfermeiro);
     enfermeiros = (Enfermeiro*)malloc(counter*sizeof(Enfermeiro));
-
-    if (enfermeiros == NULL){
-        erro("Malloc failed!\n");
-        exit(-1);
-    }
 
     fread(enfermeiros, sizeof(Enfermeiro), counter, fb); 
 

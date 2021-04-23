@@ -20,7 +20,7 @@ Vaga vagas[NUM_VAGAS];
 Enfermeiro *enfermeiros;
 long size;
 int counter;
-
+int sigterm = 0;
 
 /*Inicia o index_enfermeiro das vagas a -1
 Ou seja, limpa a lista*/
@@ -28,12 +28,12 @@ void init_vagas(){
     /*Percorre as vagas*/
     for(int i = 0; i < NUM_VAGAS; i++){
         /*Preenche a -1*/
+        vagas[i].PID_filho=-1;
         vagas[i].index_enfermeiro = -1;
     }
     /*Mensagem de sucesso*/
     sucesso("S3) Iniciei a lista de <%d> vagas", NUM_VAGAS);
 }
-
 
 /*Regista o PID do servidor.c no ficheiro servidor.pid*/
 void register_pid(){
@@ -65,9 +65,9 @@ void read_request(){
 
         /*Declara as variaveis*/
         FILE *fp;
-        char *p;
         char linha[100];
         int i = 0;
+        char *p;
 
         /*Se o ficheiro pedidovacina.txt não existir, logo não recebeu pedido de vacinacao*/
         if( access( FILE_PEDIDO_VACINA , F_OK ) != 0 ) {
@@ -90,37 +90,44 @@ void read_request(){
         p = strtok(linha,":");
 
         //Guarda o numero de utente na variavel global Cidadao a
-        if ( p != NULL ) a.num_utente= atoi(p);
+        if ( p != NULL ) 
+            a.num_utente= atoi(p);
 
         p = strtok( NULL, ":");
 
         //Guarda o nome na variavel global Cidadao a
-        if ( p != NULL ) strcpy(a.nome, p );
+        if ( p != NULL ) 
+            strcpy(a.nome, p );
 
         p = strtok( NULL, ":");
 
         //Guarda a idade na variavel global Cidadao a
-        if ( p != NULL ) a.idade= atoi(p);
+        if ( p != NULL ) 
+            a.idade= atoi(p);
 
         p = strtok( NULL, ":");
 
         //Guarda a localidade na variavel global Cidadao a
-        if ( p != NULL ) strcpy(a.localidade, p );
+        if ( p != NULL ) 
+            strcpy(a.localidade, p );
 
         p = strtok( NULL, ":");
 
         //Guarda o numero de telemovel na variavel global Cidadao a
-        if ( p != NULL ) strcpy(a.nr_telemovel, p );
+        if ( p != NULL ) 
+            strcpy(a.nr_telemovel, p );
 
         p = strtok( NULL, ":");
 
         //Guarda o estado de vacinacao na variavel global Cidadao a
-        if ( p != NULL ) a.estado_vacinacao = atoi(p);
+        if ( p != NULL ) 
+            a.estado_vacinacao = atoi(p);
 
         p = strtok( NULL, ":");
 
         //Guarda o PID do processo cidadao na variavel global Cidadao a
-        if ( p != NULL ) a.PID_cidadao = atoi(p);
+        if ( p != NULL ) 
+            a.PID_cidadao = atoi(p);
 
         
         printf("Chegou o cidadão com o pedido nº <%d>, com nº utente %d, para ser vacinado no Centro de Saúde <CS%s>\n", 
@@ -142,7 +149,7 @@ void write_dat(int index){
 
     //Se o ficheiro enfermeiros.dat nao existir
     if( access( FILE_ENFERMEIROS , F_OK ) != 0 ) {
-        erro("enfermeiros.dat não encontrado");
+        erro("FILE enfermeiros.dat não encontrado");
         exit(-1);
     }
 
@@ -150,7 +157,8 @@ void write_dat(int index){
     fb = fopen(FILE_ENFERMEIROS, "r+"); 
 
     //Se ocorrer um erro emite mensagem de erro
-    if(fb == NULL) erro("S2) Não consegui escrever no ficheiro FILE_ENFERMEIROS!");
+    if(fb == NULL) 
+        erro("S5.5.3.4) Não consegui escrever no ficheiro FILE_ENFERMEIROS!");
     
     //Coloca o ponteiro na linha dada
     fseek(fb, index*sizeof(Enfermeiro), SEEK_SET); 
@@ -165,7 +173,6 @@ void write_dat(int index){
     fclose(fb);
 }
 
-
 //Processo que liberta a vaga apos a vacinacao acabar
 void clean_vaga(int pid){
 
@@ -174,9 +181,11 @@ void clean_vaga(int pid){
 
     //Percorre as vagas
     for(int i = 0; i < NUM_VAGAS; i++){
-
         //Se o o pid forem iguais
         if(vagas[i].PID_filho==pid){
+            
+            //Limpa o PID do filho
+            vagas[i].PID_filho = -1;
             
             //Guarda o indice do enfermeiro no "array" de enfermeiros
             index_enfermeiro = vagas[i].index_enfermeiro;
@@ -213,23 +222,29 @@ void signal_handler(int sig){
 
     //Se o pai receber o sinal de SIGCHLD
     if(sig == SIGCHLD){
-        //Guarda o pid do processo filho que morreu
-        int pid = waitpid(-1, NULL, WNOHANG);
-        clean_vaga(pid);
+        if(sigterm==0){
+            //Guarda o pid do processo filho que morreu
+            int pid = waitpid(-1, NULL, WNOHANG);
+            clean_vaga(pid);
+        }
     }
     //Se o sinal for SIGTERM
     if(sig == SIGTERM){
         //Envia ao PID_cidadao o sinal SIGTERM
         kill(a.PID_cidadao, SIGTERM);
+        //Coloca uma "especie de uma flag para que o processo filho não faça certas coisas"
+        sigterm = 1;
         //Output sucesso
         sucesso("S5.6.1) SIGTERM recebido, servidor dedicado termina Cidadão");
     }
 }
 
-
 //Funcao que vacina os cidadaos
 void vaccinate(int i){
+
     // O i é utilizado para as vagas
+
+    //Cria-se o processo filho
     pid_t child = fork();
 
     //Se houver erro em criar o filho
@@ -240,10 +255,7 @@ void vaccinate(int i){
 
     //Processo Filho
     if(child == 0){
-
-        /*Output sucesso*/
-        sucesso("S5.4) Servidor dedicado <%d> criado para o pedido <%d>", child, vagas[i].cidadao.PID_cidadao);
-
+    
         /*Arma o sinal SIGTERM*/
         signal(SIGTERM, signal_handler);
 
@@ -258,18 +270,27 @@ void vaccinate(int i){
 
         /*Tempo de vacinacao*/
         sleep(TEMPO_CONSULTA);
+        
+        /*Se não houver SIGTERM fazer isto*/
+        if(sigterm == 0){
+             /*Output sucesso*/
+            sucesso("S5.6.3) Vacinação terminada para o cidadão com o pedido nº <%d>", vagas[i].cidadao.PID_cidadao);
 
-        /*Output sucesso*/
-        sucesso("S5.6.3) Vacinação terminada para o cidadão com o pedido nº <%d>", vagas[i].cidadao.PID_cidadao);
+            /*Envia ao processo cidadao o sinal SIGUSR2*/
+            kill(vagas[i].cidadao.PID_cidadao,SIGUSR2);
 
-        /*Envia ao processo cidadao o sinal SIGUSR2*/
-        kill(vagas[i].cidadao.PID_cidadao,SIGUSR2);
+            /*Output sucesso*/
+            sucesso("S5.6.4) Servidor dedicado termina consulta de vacinação");
+        }
 
         /*Acaba o processo filho*/
         exit(0);
 
     //Processo Pai
     }else{
+
+        /*Output sucesso*/
+        sucesso("S5.4) Servidor dedicado <%d> criado para o pedido <%d>", child, vagas[i].cidadao.PID_cidadao);
 
         /*Guarda o PID do processo filho*/
         vagas[i].PID_filho = child;
@@ -314,7 +335,6 @@ void verify_avail(){
 
                     erro("S5.2.2) Não há vaga para vacinação para o pedido <%d>", a.PID_cidadao);
 
-
                 //Se houver vagas e enfermeiro disponivel
                 }else{
                     
@@ -352,15 +372,16 @@ void verify_avail(){
 
  }
 
-
 /*Devolve o tamanho do ficheiro*/
-int fsize(FILE* file) {
+long fsize(FILE* file) {
+    //Começa a ler o ficheiro até ao fim
     fseek(file, 0L, SEEK_END);
-    int size = ftell(file);
+    //Coloca a posição em que o ponteiro ficou
+    long size = ftell(file);
+    //Faz reset do ponteiro para o inicio do ficheiro
     fseek(file, 0L, SEEK_SET);
     return size;
 }
-
 
 /*Lê o ficheiro enfermeiros.dat*/
 void read_file(){
@@ -406,27 +427,35 @@ void read_file(){
 
 }
 
+/*Signal Handler*/
 void sig_handler(int sig){
+    //Se o sinal for SIGUSR1
     if(sig == SIGUSR1){
+        //Vai ler o pedidovacina.txt
         read_request();
+        //Verifica se há enfermeiros disponiveis
         verify_avail();
     }
+    //Se o sinal for o SIGINT
     if(sig == SIGINT){
         printf("\n");
         sucesso("S6) Servidor terminado");
         remove(FILE_PID_SERVIDOR);
-        killpg(getpid(), SIGTERM);
+
+        //Vai enviar o sinal SIGTERM aos processos filhos
+        for(int i = 0; i < NUM_VAGAS; i++){
+            if(vagas[i].PID_filho!=-1)
+                kill(vagas[i].PID_filho, SIGTERM);            
+        }
         exit(0);
     }
 }
-
 
 int main(){
 
     /*Processos que invocam outros
     Quando recebe SIGUSR1 --> read_request()
                           --> verify_avail() --> vaccinate(index)
-
     Quando pai recebe SIGCHLD --> clean_vaga() --> write_dat()
     */
 

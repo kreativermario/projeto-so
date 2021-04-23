@@ -20,7 +20,7 @@
 #define FILE_ENFERMEIROS   "enfermeiros.dat"    // Nome do Ficheiro que tem a lista de enfermeiros associados aos Centros de Saúde para vacinação
 
 #define NUM_VAGAS 15        // Número de vagas de cidadãos que poderão estar a ser vacinados simultâneamente
-#define TEMPO_CONSULTA 35   // Tempo em segundos que leva a realizar uma consulta de vacinação pelo processo Servidor-Filho
+#define TEMPO_CONSULTA 75   // Tempo em segundos que leva a realizar uma consulta de vacinação pelo processo Servidor-Filho
 
 typedef struct {             // Estrutura associada a um Cidadão:
     int num_utente;          // Nº de Utente do cidadão

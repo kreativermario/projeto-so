@@ -20,7 +20,6 @@ Vaga vagas[NUM_VAGAS];
 Enfermeiro *enfermeiros;
 long size;
 int counter;
-int sigterm = 0;
 
 /*Inicia o index_enfermeiro das vagas a -1
 Ou seja, limpa a lista*/
@@ -66,7 +65,6 @@ void read_request(){
         /*Declara as variaveis*/
         FILE *fp;
         char linha[100];
-        int i = 0;
         char *p;
 
         /*Se o ficheiro pedidovacina.txt não existir, logo não recebeu pedido de vacinacao*/
@@ -222,20 +220,17 @@ void signal_handler(int sig){
 
     //Se o pai receber o sinal de SIGCHLD
     if(sig == SIGCHLD){
-        if(sigterm==0){
-            //Guarda o pid do processo filho que morreu
-            int pid = waitpid(-1, NULL, WNOHANG);
-            clean_vaga(pid);
-        }
+        //Guarda o pid do processo filho que morreu
+        int pid = waitpid(-1, NULL, WNOHANG);
+        clean_vaga(pid);
     }
     //Se o sinal for SIGTERM
     if(sig == SIGTERM){
         //Envia ao PID_cidadao o sinal SIGTERM
         kill(a.PID_cidadao, SIGTERM);
-        //Coloca uma "especie de uma flag para que o processo filho não faça certas coisas"
-        sigterm = 1;
         //Output sucesso
         sucesso("S5.6.1) SIGTERM recebido, servidor dedicado termina Cidadão");
+        exit(0);
     }
 }
 
@@ -271,17 +266,14 @@ void vaccinate(int i){
         /*Tempo de vacinacao*/
         sleep(TEMPO_CONSULTA);
         
-        /*Se não houver SIGTERM fazer isto*/
-        if(sigterm == 0){
-             /*Output sucesso*/
-            sucesso("S5.6.3) Vacinação terminada para o cidadão com o pedido nº <%d>", vagas[i].cidadao.PID_cidadao);
+        /*Output sucesso*/
+        sucesso("S5.6.3) Vacinação terminada para o cidadão com o pedido nº <%d>", vagas[i].cidadao.PID_cidadao);
 
-            /*Envia ao processo cidadao o sinal SIGUSR2*/
-            kill(vagas[i].cidadao.PID_cidadao,SIGUSR2);
+        /*Envia ao processo cidadao o sinal SIGUSR2*/
+        kill(vagas[i].cidadao.PID_cidadao,SIGUSR2);
 
-            /*Output sucesso*/
-            sucesso("S5.6.4) Servidor dedicado termina consulta de vacinação");
-        }
+        /*Output sucesso*/
+        sucesso("S5.6.4) Servidor dedicado termina consulta de vacinação");
 
         /*Acaba o processo filho*/
         exit(0);

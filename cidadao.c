@@ -54,6 +54,7 @@ void sig_handler(int sig){
   }
 }
 
+
 /*Pede ao utilizador os dados a inserir de modo a efeturar o pedido de vacinação*/
 void get_data(){
 
@@ -106,16 +107,14 @@ void get_data(){
   //regista as informacoes no ficheiro pedidovacina.txt
   fprintf(fp1, "%d:%s:%d:%s:%s:%d:%d\n", a.num_utente, a.nome, a.idade, a.localidade, a.nr_telemovel, a.estado_vacinacao, a.PID_cidadao);
 
-  //Output de sucesso
-  sucesso("C4) Ficheiro FILE_PEDIDO_VACINA criado e preenchido");
-
   //fecha o ficheiro
   fclose(fp1);
 
-  //Arma o sinal SIGINT
-  signal(SIGINT, sig_handler);
+  //Output de sucesso
+  sucesso("C4) Ficheiro FILE_PEDIDO_VACINA criado e preenchido");
 
 }
+
 
 /*Trata dos pedidos com o servidor.c*/
 void servidor(){
@@ -124,18 +123,12 @@ void servidor(){
   FILE *fp2;
   int pid_num;
 
-  /*Se o ficheiro servidor.pid não existir*/
-  if( access(FILE_PID_SERVIDOR, F_OK ) != 0 ){
-    erro("C6) Não existe ficheiro FILE_PID_SERVIDOR!");
-    exit(-1);
-  }
-
   /*Se o ficheiro existir, abre o ficheiro em modo leitura*/
   fp2 = fopen(FILE_PID_SERVIDOR , "r");
 
   /*Se houver um erro*/
   if(fp2 == NULL){
-    printf("Erro a ler o ficheiro. \n");
+    erro("C6) Não existe ficheiro FILE_PID_SERVIDOR!");
     exit(-1);
   }
 
@@ -191,6 +184,9 @@ int main(){
 
   //Invoca a função que pede ao utilizador as informações
   get_data();
+
+  //Arma o sinal SIGINT
+  signal(SIGINT, sig_handler);
 
   //Comunica com o servidor
   servidor();

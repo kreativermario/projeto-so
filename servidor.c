@@ -8,11 +8,7 @@
  **
  ******************************************************************************/
 #include "common.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/wait.h>
+#include "header.h"
 
 //Declara as variaveis globais
 Cidadao a;
@@ -20,19 +16,6 @@ Vaga vagas[NUM_VAGAS];
 Enfermeiro *enfermeiros;
 long size;
 int counter;
-
-/*Inicia o index_enfermeiro das vagas a -1
-Ou seja, limpa a lista*/
-void init_vagas(){
-    /*Percorre as vagas*/
-    for(int i = 0; i < NUM_VAGAS; i++){
-        /*Preenche a -1*/
-        vagas[i].PID_filho=-1;
-        vagas[i].index_enfermeiro = -1;
-    }
-    /*Mensagem de sucesso*/
-    sucesso("S3) Iniciei a lista de <%d> vagas", NUM_VAGAS);
-}
 
 /*Regista o PID do servidor.c no ficheiro servidor.pid*/
 void register_pid(){
@@ -59,6 +42,63 @@ void register_pid(){
     fclose(fp1);
 }
 
+
+/*Lê o ficheiro enfermeiros.dat*/
+void read_dat(){
+
+    //Inicializa as variaveis
+    FILE *fp;
+    Enfermeiro a;
+
+    //Abre o ficheiro enfermeiros.dat em modo leitura
+    fp = fopen(FILE_ENFERMEIROS, "r"); 
+
+    //Se ocorrer erro em ler
+    if(fp == NULL){
+        erro("S2) Não consegui ler o ficheiro FILE_ENFERMEIROS!"); 
+        exit(-1);
+    }
+    
+    //Regista o tamanho do ficheiro
+    size = fsize(fp);
+
+    //O numero de linhas corresponde ao bytes do ficheiro / tamanho da estrutura
+    counter = size / sizeof(Enfermeiro);
+
+    //Cria uma estrutura dinamica na memoria
+    enfermeiros = (Enfermeiro*)malloc(counter*sizeof(Enfermeiro));
+
+    //Se houver um erro na alocacao de memoria
+    if (enfermeiros == NULL){
+        erro("Erro: Malloc na criação da estrutura dinâmica de enfermeiros falhou!");
+        exit(-1);
+    }
+
+    //Lê o ficheiro até ao fim
+    fread(enfermeiros, sizeof(Enfermeiro), counter, fp); 
+
+    sucesso("S2) Ficheiro FILE_ENFERMEIROS tem <%ld> bytes, ou seja, <%d> enfermeiros", size, counter);
+
+    //Fecha o ficheiro
+    fclose(fp);
+
+}
+
+
+/*Inicia o index_enfermeiro das vagas a -1
+Ou seja, limpa a lista*/
+void init_vagas(){
+    /*Percorre as vagas*/
+    for(int i = 0; i < NUM_VAGAS; i++){
+        /*Preenche a -1*/
+        vagas[i].PID_filho=-1;
+        vagas[i].index_enfermeiro = -1;
+    }
+    /*Mensagem de sucesso*/
+    sucesso("S3) Iniciei a lista de <%d> vagas", NUM_VAGAS);
+}
+
+
 //Lê o ficheiro pedidovacina.txt
 void read_request(){
 
@@ -70,6 +110,7 @@ void read_request(){
         /*Se o ficheiro pedidovacina.txt não existir, logo não recebeu pedido de vacinacao*/
         if( access( FILE_PEDIDO_VACINA , F_OK ) != 0 ) {
             erro("S5.1) Não foi possível abrir o ficheiro FILE_PEDIDO_VACINA");
+            exit(-1);
         }
 
         //Abre o ficheiro pedidovacina.txt em modo leitura
@@ -139,164 +180,6 @@ void read_request(){
 
 }
 
-//Escreve no enfermeiros.dat, recebendo o indice da linha para escrever
-void write_dat(int index){
-
-    //Inicializa as variaveis
-    FILE *fb;
-
-    //Se o ficheiro enfermeiros.dat nao existir
-    if( access( FILE_ENFERMEIROS , F_OK ) != 0 ) {
-        erro("FILE enfermeiros.dat não encontrado");
-        exit(-1);
-    }
-
-    //Abre o ficheiro em leitura e escrita
-    fb = fopen(FILE_ENFERMEIROS, "r+"); 
-
-    //Se ocorrer um erro emite mensagem de erro
-    if(fb == NULL) 
-        erro("S5.5.3.4) Não consegui escrever no ficheiro FILE_ENFERMEIROS!");
-    
-    //Coloca o ponteiro na linha dada
-    fseek(fb, index*sizeof(Enfermeiro), SEEK_SET); 
-
-    //Escrever na linha dada com os dados atualizados do enfermeiro index
-    fwrite(&enfermeiros[index], sizeof(Enfermeiro), 1, fb); 
-
-    //Output de sucesso
-    sucesso("S5.5.3.4) Ficheiro FILE_ENFERMEIROS <%d> atualizado para <%d> vacinas dadas", index, enfermeiros[index].num_vac_dadas);
-
-    //Fecha o ficheiro
-    fclose(fb);
-}
-
-//Processo que liberta a vaga apos a vacinacao acabar
-void clean_vaga(int pid){
-
-    //Define variavel
-    int index_enfermeiro;
-
-    //Percorre as vagas
-    for(int i = 0; i < NUM_VAGAS; i++){
-        //Se o o pid forem iguais
-        if(vagas[i].PID_filho==pid){
-            
-            //Limpa o PID do filho
-            vagas[i].PID_filho = -1;
-            
-            //Guarda o indice do enfermeiro no "array" de enfermeiros
-            index_enfermeiro = vagas[i].index_enfermeiro;
-
-            //Liberta a vaga
-            vagas[i].index_enfermeiro = -1;
-
-            //Output de sucesso
-            sucesso("S5.5.3.1) Vaga <%d> que era do servidor dedicado <%d> libertada", i, pid);
-
-            //Coloca a disponibilidade do enfermeiro como disponivel = 1
-            enfermeiros[index_enfermeiro].disponibilidade=1;
-
-            //Output de sucesso
-            sucesso("S5.5.3.2) Enfermeiro <%d> atualizado para disponível", index_enfermeiro);
-
-            //Aumenta o numero de vacinas dadas pelo enfermeiro
-            enfermeiros[index_enfermeiro].num_vac_dadas+=1;
-            
-            //Output de sucesso
-            sucesso("S5.5.3.3) Enfermeiro <%d> atualizado para <%d> vacinas dadas", index_enfermeiro,  
-                                                                                enfermeiros[index_enfermeiro].num_vac_dadas );
-            //Escreve no ficheiro enfermeiros.dat
-            write_dat(index_enfermeiro);
-
-            //Output de sucesso
-            sucesso("S5.5.3.5) Retorna");
-        }
-    }   
-}
-
-//Handler de sinais
-void signal_handler(int sig){
-
-    //Se o pai receber o sinal de SIGCHLD
-    if(sig == SIGCHLD){
-        //Guarda o pid do processo filho que morreu
-        int pid = waitpid(-1, NULL, WNOHANG);
-        clean_vaga(pid);
-    }
-    //Se o sinal for SIGTERM
-    if(sig == SIGTERM){
-        //Envia ao PID_cidadao o sinal SIGTERM
-        kill(a.PID_cidadao, SIGTERM);
-        //Output sucesso
-        sucesso("S5.6.1) SIGTERM recebido, servidor dedicado termina Cidadão");
-        exit(0);
-    }
-}
-
-//Funcao que vacina os cidadaos
-void vaccinate(int i){
-
-    // O i é utilizado para as vagas
-
-    //Cria-se o processo filho
-    pid_t child = fork();
-
-    //Se houver erro em criar o filho
-    if(child < 0){
-        erro("S5.4) Não foi possível criar o servidor dedicado"); 
-        exit(-1);
-    }
-
-    //Processo Filho
-    if(child == 0){
-    
-        /*Arma o sinal SIGTERM*/
-        signal(SIGTERM, signal_handler);
-
-        /*Ignora o sinal SIGINT*/
-        signal(SIGINT, SIG_IGN);
-
-        /*Envia o sinal SIGUSR1*/
-        kill(vagas[i].cidadao.PID_cidadao, SIGUSR1);
-
-        /*Output sucesso*/
-        sucesso("S5.6.2) Servidor dedicado inicia consulta de vacinação");
-
-        /*Tempo de vacinacao*/
-        sleep(TEMPO_CONSULTA);
-        
-        /*Output sucesso*/
-        sucesso("S5.6.3) Vacinação terminada para o cidadão com o pedido nº <%d>", vagas[i].cidadao.PID_cidadao);
-
-        /*Envia ao processo cidadao o sinal SIGUSR2*/
-        kill(vagas[i].cidadao.PID_cidadao,SIGUSR2);
-
-        /*Output sucesso*/
-        sucesso("S5.6.4) Servidor dedicado termina consulta de vacinação");
-
-        /*Acaba o processo filho*/
-        exit(0);
-
-    //Processo Pai
-    }else{
-
-        /*Output sucesso*/
-        sucesso("S5.4) Servidor dedicado <%d> criado para o pedido <%d>", child, vagas[i].cidadao.PID_cidadao);
-
-        /*Guarda o PID do processo filho*/
-        vagas[i].PID_filho = child;
-
-        /*Output sucesso*/
-        sucesso("S5.5.1) Servidor dedicado <%d> na vaga <%d>", vagas[i].PID_filho, i);
-
-        /*Arma o sinal SIGCHLD*/
-        signal(SIGCHLD, signal_handler);
-
-        /*Output sucesso*/
-        sucesso("S5.5.2) Servidor aguarda fim do servidor dedicado <%d>", vagas[i].PID_filho);
-    }
-}
 
 /*Verifica se há enfermeiros disponiveis*/
 void verify_avail(){
@@ -364,63 +247,161 @@ void verify_avail(){
 
  }
 
-/*Devolve o tamanho do ficheiro*/
-long fsize(FILE* file) {
-    //Começa a ler o ficheiro até ao fim
-    fseek(file, 0L, SEEK_END);
-    //Coloca a posição em que o ponteiro ficou
-    long size = ftell(file);
-    //Faz reset do ponteiro para o inicio do ficheiro
-    fseek(file, 0L, SEEK_SET);
-    return size;
+
+//Funcao que vacina os cidadaos
+void vaccinate(int i){
+
+    // O i é utilizado para as vagas
+
+    //Cria-se o processo filho
+    pid_t child = fork();
+
+    //Se houver erro em criar o filho
+    if(child < 0){
+        erro("S5.4) Não foi possível criar o servidor dedicado"); 
+        exit(-1);
+    }
+
+    //Processo Filho
+    if(child == 0){
+    
+        /*Arma o sinal SIGTERM*/
+        signal(SIGTERM, child_handler);
+
+        /*Ignora o sinal SIGINT*/
+        signal(SIGINT, SIG_IGN);
+
+        /*Envia o sinal SIGUSR1*/
+        kill(vagas[i].cidadao.PID_cidadao, SIGUSR1);
+
+        /*Output sucesso*/
+        sucesso("S5.6.2) Servidor dedicado inicia consulta de vacinação");
+
+        /*Tempo de vacinacao*/
+        sleep(TEMPO_CONSULTA);
+        
+        /*Output sucesso*/
+        sucesso("S5.6.3) Vacinação terminada para o cidadão com o pedido nº <%d>", vagas[i].cidadao.PID_cidadao);
+
+        /*Envia ao processo cidadao o sinal SIGUSR2*/
+        kill(vagas[i].cidadao.PID_cidadao,SIGUSR2);
+
+        /*Output sucesso*/
+        sucesso("S5.6.4) Servidor dedicado termina consulta de vacinação");
+
+        /*Acaba o processo filho*/
+        exit(0);
+
+    //Processo Pai
+    }else{
+
+        /*Output sucesso*/
+        sucesso("S5.4) Servidor dedicado <%d> criado para o pedido <%d>", child, vagas[i].cidadao.PID_cidadao);
+
+        /*Guarda o PID do processo filho*/
+        vagas[i].PID_filho = child;
+
+        /*Output sucesso*/
+        sucesso("S5.5.1) Servidor dedicado <%d> na vaga <%d>", vagas[i].PID_filho, i);
+
+        /*Arma o sinal SIGCHLD*/
+        signal(SIGCHLD, dad_handler);
+
+        /*Output sucesso*/
+        sucesso("S5.5.2) Servidor aguarda fim do servidor dedicado <%d>", vagas[i].PID_filho);
+    }
 }
 
-/*Lê o ficheiro enfermeiros.dat*/
-void read_file(){
+
+//Processo que liberta a vaga apos a vacinacao acabar
+void clean_vaga(int pid){
+
+    //Define variavel
+    int index_enfermeiro;
+
+    //Percorre as vagas
+    for(int i = 0; i < NUM_VAGAS; i++){
+        //Se o o pid forem iguais
+        if(vagas[i].PID_filho==pid){
+            
+            //Limpa o PID do filho
+            vagas[i].PID_filho = -1;
+            
+            //Guarda o indice do enfermeiro no "array" de enfermeiros
+            index_enfermeiro = vagas[i].index_enfermeiro;
+
+            //Liberta a vaga
+            vagas[i].index_enfermeiro = -1;
+
+            //Output de sucesso
+            sucesso("S5.5.3.1) Vaga <%d> que era do servidor dedicado <%d> libertada", i, pid);
+
+            //Coloca a disponibilidade do enfermeiro como disponivel = 1
+            enfermeiros[index_enfermeiro].disponibilidade=1;
+
+            //Output de sucesso
+            sucesso("S5.5.3.2) Enfermeiro <%d> atualizado para disponível", index_enfermeiro);
+
+            //Aumenta o numero de vacinas dadas pelo enfermeiro
+            enfermeiros[index_enfermeiro].num_vac_dadas+=1;
+            
+            //Output de sucesso
+            sucesso("S5.5.3.3) Enfermeiro <%d> atualizado para <%d> vacinas dadas", index_enfermeiro,  
+                                                                                enfermeiros[index_enfermeiro].num_vac_dadas );
+            //Escreve no ficheiro enfermeiros.dat
+            write_dat(index_enfermeiro);
+
+            //Output de sucesso
+            sucesso("S5.5.3.5) Retorna");
+        }
+    }   
+}
+
+
+//Escreve no enfermeiros.dat, recebendo o indice da linha para escrever
+void write_dat(int index){
 
     //Inicializa as variaveis
-    FILE *fp;
-    Enfermeiro a;
+    FILE *fb;
 
-    //Se o ficheiro existir
+    //Se o ficheiro enfermeiros.dat nao existir
     if( access( FILE_ENFERMEIROS , F_OK ) != 0 ) {
-        erro("enfermeiros.dat não encontrado");
+        erro("FILE enfermeiros.dat não encontrado");
         exit(-1);
     }
 
-    //Abre o ficheiro enfermeiros.dat em modo leitura
-    fp = fopen(FILE_ENFERMEIROS, "r"); 
+    //Abre o ficheiro em leitura e escrita
+    fb = fopen(FILE_ENFERMEIROS, "r+"); 
 
-    //Se ocorrer erro em ler
-    if(fp == NULL) erro("S2) Não consegui ler o ficheiro FILE_ENFERMEIROS!");
+    //Se ocorrer um erro emite mensagem de erro
+    if(fb == NULL) 
+        erro("S5.5.3.4) Não consegui escrever no ficheiro FILE_ENFERMEIROS!");
     
-    //Regista o tamanho do ficheiro
-    size = fsize(fp);
+    //Coloca o ponteiro na linha dada
+    fseek(fb, index*sizeof(Enfermeiro), SEEK_SET); 
 
-    //O numero de linhas corresponde ao bytes do ficheiro / tamanho da estrutura
-    counter = size / sizeof(Enfermeiro);
+    //Escrever na linha dada com os dados atualizados do enfermeiro index
+    fwrite(&enfermeiros[index], sizeof(Enfermeiro), 1, fb); 
 
-    //Cria uma estrutura dinamica na memoria
-    enfermeiros = (Enfermeiro*)malloc(counter*sizeof(Enfermeiro));
-
-    //Se houver um erro na alocacao de memoria
-    if (enfermeiros == NULL){
-        erro("Malloc failed!\n");
-        exit(-1);
-    }
-
-    //Lê o ficheiro até ao fim
-    fread(enfermeiros, sizeof(Enfermeiro), counter, fp); 
-
-    sucesso("S2) Ficheiro FILE_ENFERMEIROS tem <%ld> bytes, ou seja, <%d> enfermeiros", size, counter);
+    //Output de sucesso
+    sucesso("S5.5.3.4) Ficheiro FILE_ENFERMEIROS <%d> atualizado para <%d> vacinas dadas", index, enfermeiros[index].num_vac_dadas);
 
     //Fecha o ficheiro
-    fclose(fp);
-
+    fclose(fb);
 }
 
-/*Signal Handler*/
-void sig_handler(int sig){
+
+/*Devolve o tamanho do ficheiro*/
+long fsize(FILE* file){
+    fseek(file, 0L, SEEK_END); 
+    size = ftell(file); 
+    fseek(file, 0L, SEEK_SET); 
+    return size; 
+}
+
+
+/*Signal Handler para o processo pai*/
+void dad_handler(int sig){
     //Se o sinal for SIGUSR1
     if(sig == SIGUSR1){
         //Vai ler o pedidovacina.txt
@@ -441,7 +422,28 @@ void sig_handler(int sig){
         }
         exit(0);
     }
+    //Se o pai receber o sinal de SIGCHLD
+    if(sig == SIGCHLD){
+        //Guarda o pid do processo filho que morreu
+        int pid = waitpid(-1, NULL, WNOHANG);
+        clean_vaga(pid);
+    }
+    
 }
+
+
+/*Signal handler para o filho*/
+void child_handler(int sig){
+    //Se o sinal for SIGTERM
+    if(sig == SIGTERM){
+        //Envia ao PID_cidadao o sinal SIGTERM
+        kill(a.PID_cidadao, SIGTERM);
+        //Output sucesso
+        sucesso("S5.6.1) SIGTERM recebido, servidor dedicado termina Cidadão");
+        exit(0);
+    }
+}
+
 
 int main(){
 
@@ -451,25 +453,24 @@ int main(){
     Quando pai recebe SIGCHLD --> clean_vaga() --> write_dat()
     */
 
-    /*Ignora o sinal SIGTERM*/
+    /*Ignora o sinal SIGTERM para o processo pai*/
     signal(SIGTERM, SIG_IGN);
 
     /*Regista o PID do servidor.c no ficheiro servidor.pid*/
     register_pid();
 
     /*Lê e guarda os enfermeiros numa estrutura dinamica de memoria do ficheiro enfermeiros.dat*/
-    read_file();
+    read_dat();
 
     /*Preenche os index_enfermeiro com -1, essencialmente, limpa a lista*/
     init_vagas();
 
     /*Arma os sinais SIGUSR1, SIGINT*/
-    signal(SIGUSR1,sig_handler);
-    signal(SIGINT, sig_handler);
-
+    signal(SIGUSR1,dad_handler);
     sucesso("S4) Servidor espera pedidos");
+    signal(SIGINT, dad_handler);
 
-    /*Fica num loop em espera ativa à espera de receber um sinal*/
+    /*Fica em espera passiva até receber um sinal*/
     while(1) pause();
 
     /*Devolve 0*/

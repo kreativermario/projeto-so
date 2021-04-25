@@ -187,6 +187,7 @@ void verify_avail(){
     //Inicia as variaveis
     char *tmp = strdup(a.localidade);
     int index_enfermeiro;
+    int enf_existe = 0;
 
     //Concatena a localidade do cidadao com CS, ou seja CS"<a.localidade>"
     strcpy(a.localidade, "CS"); 
@@ -204,11 +205,12 @@ void verify_avail(){
             if(enfermeiros[i].disponibilidade == 1){
 
                 sucesso("S5.2.1) Enfermeiro <%d> disponível para o pedido <%d>", index_enfermeiro, a.PID_cidadao);
-
+                
                 //Se não houver vagas
                 if(vagas[NUM_VAGAS-1].index_enfermeiro != -1){
 
                     erro("S5.2.2) Não há vaga para vacinação para o pedido <%d>", a.PID_cidadao);
+                    kill(a.PID_cidadao, SIGTERM);
 
                 //Se houver vagas e enfermeiro disponivel
                 }else{
@@ -217,8 +219,10 @@ void verify_avail(){
 
                     //Percorre as vagas
                     for(int j = 0; j < NUM_VAGAS; j++){
+
                         //Se nao houver ninguem a ocupar a vaga
                         if(vagas[j].index_enfermeiro == -1){
+                            
                             //Guarda o indice do enfermeiro e o cidadao e disponibilidade do enfermeiro é 0
                             vagas[j].index_enfermeiro = index_enfermeiro;
                             vagas[j].cidadao = a;
@@ -226,6 +230,8 @@ void verify_avail(){
 
                             sucesso("S5.3) Vaga nº <%d> preenchida para o pedido <%d>", j, a.PID_cidadao);
 
+                            //Ativa uma flag
+                            enf_existe = 1;
                             //Inicia o processo de vacinacao
                             vaccinate(j);
 
@@ -239,6 +245,18 @@ void verify_avail(){
                 //Envia ao processo cidadao o sinal SIGTERM
                 kill(a.PID_cidadao, SIGTERM);
                 erro("S5.2.1) Enfermeiro <%d> indisponível para o pedido <%d> para o Centro de Saúde <%s>", i, a.PID_cidadao, enfermeiros[i].CS_enfermeiro);
+            }
+        //Se não houver enfermeiro para a localidade do cidadao
+        }else{
+            //Se não existir enfermeiro na CSLocalidade do cidadao disponivel e com vaga
+            if(enf_existe == 0){
+                //Se ainda não chegou ao fim dos enfermeiros, ou seja ainda não verificou todos
+                if(i != counter-1) continue;
+                //Se chegou ao fim e não há localidades iguais, dá erro e envia SIGTERM
+                else{
+                    erro("Não existe enfermeiro para o Centro de Saúde <%s>", a.localidade);
+                    kill(a.PID_cidadao, SIGTERM);
+                }
             }
         }
     }
@@ -366,7 +384,7 @@ void write_dat(int index){
 
     //Se o ficheiro enfermeiros.dat nao existir
     if( access( FILE_ENFERMEIROS , F_OK ) != 0 ) {
-        erro("FILE enfermeiros.dat não encontrado");
+        erro("FILE_ENFERMEIROS não encontrado!");
         exit(-1);
     }
 
@@ -377,7 +395,7 @@ void write_dat(int index){
     if(fb == NULL) 
         erro("S5.5.3.4) Não consegui escrever no ficheiro FILE_ENFERMEIROS!");
     
-    //Coloca o ponteiro na linha dada
+    //Coloca o ponteiro na linha do enfermeiro dado
     fseek(fb, index*sizeof(Enfermeiro), SEEK_SET); 
 
     //Escrever na linha dada com os dados atualizados do enfermeiro index
@@ -409,10 +427,15 @@ void dad_handler(int sig){
         //Verifica se há enfermeiros disponiveis
         verify_avail();
     }
+    //Se o pai receber o sinal de SIGCHLD
+    if(sig == SIGCHLD){
+        //Guarda o pid do processo filho que morreu
+        int pid = waitpid(-1, NULL, WNOHANG);
+        clean_vaga(pid);
+    }
     //Se o sinal for o SIGINT
     if(sig == SIGINT){
         printf("\n");
-        sucesso("S6) Servidor terminado");
         remove(FILE_PID_SERVIDOR);
 
         //Vai enviar o sinal SIGTERM aos processos filhos
@@ -420,15 +443,9 @@ void dad_handler(int sig){
             if(vagas[i].PID_filho!=-1)
                 kill(vagas[i].PID_filho, SIGTERM);            
         }
+        sucesso("S6) Servidor terminado");
         exit(0);
     }
-    //Se o pai receber o sinal de SIGCHLD
-    if(sig == SIGCHLD){
-        //Guarda o pid do processo filho que morreu
-        int pid = waitpid(-1, NULL, WNOHANG);
-        clean_vaga(pid);
-    }
-    
 }
 
 

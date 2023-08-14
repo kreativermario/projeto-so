@@ -1,7 +1,5 @@
 /******************************************************************************
  ** ISCTE-IUL: Trabalho prático de Sistemas Operativos
- **
- ** Aluno: Nº:       Nome: 
  ** Nome do Módulo: utils.h v2
  ** Descrição/Explicação do Módulo: 
  **     Definição de funções utilitárias genéricas

@@ -1,11 +1,7 @@
 /******************************************************************************
  ** ISCTE-IUL: Trabalho prático de Sistemas Operativos
- **
- ** Aluno: Nº: 98384      Nome: Mário André Chen Cao
  ** Nome do Módulo: cidadao.c
  ** Descrição/Explicação do Módulo: Simula a chegada do cidadao ao centro de saude
- **
- **
  ******************************************************************************/
 #include "common.h"
 #include <stdio.h>

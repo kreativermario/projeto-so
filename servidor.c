@@ -1,11 +1,8 @@
 /******************************************************************************
  ** ISCTE-IUL: Trabalho prático de Sistemas Operativos
- **
- ** Aluno: Nº: 98384      Nome: Mário André Chen Cao
  ** Nome do Módulo: servidor.c
  ** Descrição/Explicação do Módulo: É responsável pela atribuicao de um enfermeiro
  ** para admnistrar as vacinas aos cidadaos que chegam aos Centros de Saúde
- **
  ******************************************************************************/
 #include "common.h"
 #include "header.h"

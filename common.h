@@ -1,7 +1,5 @@
 /******************************************************************************
  ** ISCTE-IUL: Trabalho prático de Sistemas Operativos
- **
- ** Aluno: Nº:       Nome: 
  ** Nome do Módulo: common.h
  ** Descrição/Explicação do Módulo: 
  **     Definição das estruturas de dados comuns aos módulos servidor e cidadao
